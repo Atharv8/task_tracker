@@ -30,10 +30,12 @@ pipeline {
 
         stage('Run Selenium Tests') {
             steps {
-                // Install dependencies for testing
-                sh "pip3 install -r requirements.txt"
-                // Run the test script
-                sh "python3 test_app.py"
+                // Create a virtual environment, use it to install requirements, and run the test
+                sh '''
+                    python3 -m venv test_env
+                    test_env/bin/pip install -r requirements.txt
+                    test_env/bin/python test_app.py
+                '''
             }
             post {
                 always {
