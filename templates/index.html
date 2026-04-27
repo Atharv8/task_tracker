@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head><title>Task Tracker</title></head>
+<body>
+    <h1>Task Tracker</h1>
+    <form action="/add" method="POST">
+        <input type="text" name="task" id="taskInput" placeholder="Enter a task" required>
+        <button type="submit" id="addButton">Add Task</button>
+    </form>
+    <ul id="taskList">
+        {% for task in tasks %}
+            <li class="task-item">
+                <span class="task-name">{{ task[1] }}</span> 
+                <a href="/delete/{{ task[0] }}" class="delete-link">Delete</a>
+            </li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
