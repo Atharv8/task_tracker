@@ -64,7 +64,6 @@ pipeline {
                 sh "sed -i 's/image: task-tracker:latest/image: task-tracker:${env.BUILD_ID}/g' k8s/deployment.yaml"
                 
                 sh 'kubectl apply -f k8s/deployment.yaml'
-                sh 'kubectl apply -f k8s/service.yaml'
                 // Removed the rollout restart line, as changing the image tag automatically triggers a rollout!
             }
         }
