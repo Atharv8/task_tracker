@@ -13,24 +13,26 @@ pipeline {
             }
         }
 
-        stage('Build Docker Image') {
+       stage('Build Docker Image') {
             steps {
-                sh "docker build -t ${IMAGE_NAME}:latest ."
+                echo 'Building the Docker Image...'
+                // Use the Jenkins BUILD_ID to create a unique tag
+                sh "docker build -t task-tracker:${env.BUILD_ID} ."
             }
         }
 
         stage('Start Test Environment') {
             steps {
-                // Run the container in the background to test against it
-                sh "docker run -d --name ${CONTAINER_NAME} -p 5000:5000 ${IMAGE_NAME}:latest"
-                // Give Flask a second to start
+                echo 'Starting temporary container for testing...'
+                // Start the container using the unique tag
+                sh "docker run -d --name ${CONTAINER_NAME} -p 5000:5000 task-tracker:${env.BUILD_ID}"
                 sleep 5
             }
         }
 
         stage('Run Selenium Tests') {
+            // (Keep your existing venv and test steps here)
             steps {
-                // Create a virtual environment, use it to install requirements, and run the test
                 sh '''
                     python3 -m venv test_env
                     test_env/bin/pip install -r requirements.txt
@@ -39,7 +41,6 @@ pipeline {
             }
             post {
                 always {
-                    // Tear down the test container whether tests pass or fail
                     sh "docker stop ${CONTAINER_NAME} || true"
                     sh "docker rm ${CONTAINER_NAME} || true"
                 }
@@ -48,19 +49,23 @@ pipeline {
 
         stage('Push Image to Minikube') {
             steps {
-                // Loads the locally built Docker image directly into Minikube's registry
-                sh "minikube image load ${IMAGE_NAME}:latest"
+                echo 'Loading image into Minikube...'
+                // Push the uniquely tagged image
+                sh "minikube image load task-tracker:${env.BUILD_ID}"
             }
         }
 
         stage('Deploy to Kubernetes') {
             steps {
-                // Apply the storage and deployment manifests
-                sh "kubectl apply -f k8s/database-storage.yaml"
-                sh "kubectl apply -f k8s/deployment.yaml"
+                echo 'Applying Kubernetes Manifests...'
                 
-                // Rollout restart ensures K8s pulls the newly loaded image
-                sh "kubectl rollout restart deployment task-tracker-deploy"
+                // NEW LINE: This finds 'task-tracker:latest' in your deployment.yaml 
+                // and replaces it with 'task-tracker:5' (or whatever the build ID is)
+                sh "sed -i 's/image: task-tracker:latest/image: task-tracker:${env.BUILD_ID}/g' k8s/deployment.yaml"
+                
+                sh 'kubectl apply -f k8s/deployment.yaml'
+                sh 'kubectl apply -f k8s/service.yaml'
+                // Removed the rollout restart line, as changing the image tag automatically triggers a rollout!
             }
         }
     }
